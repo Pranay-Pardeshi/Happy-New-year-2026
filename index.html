@@ -25,7 +25,7 @@
             background-color: var(--deep-black);
             font-family: 'Montserrat', sans-serif;
             color: white;
-            min-height: 100vh; /* Changed from fixed height to min-height */
+            min-height: 100vh;
         }
 
         /* Animated Background Gradient */
@@ -198,7 +198,9 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <audio id="bgMusic" loop>
-        <source src="https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/win.ogg" type="audio/ogg">
+        <!-- Replaced with a Golden Waltz style track. Replace the src below with a direct link to Golden Brown if you have it -->
+        <source src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Strauss_-_The_Blue_Danube.ogg" type="audio/ogg">
+        <!-- Backup/Placeholder for Golden Brown vibe (Harpsichord style) -->
     </audio>
 
     <!-- DOOR / GATE ANIMATION CONTAINER -->
@@ -319,6 +321,9 @@
 
     <!-- UI/UX Script - Separated for local file compatibility -->
     <script>
+        // Global variable to hold user name if firebase fails
+        let globalUserName = localStorage.getItem('nye2026_username') || '';
+
         // --- GATE OPENING ANIMATION ---
         function openGates() {
             const audio = document.getElementById('bgMusic');
@@ -360,6 +365,31 @@
             }, 500);
         }
 
+        // --- JOIN CHAT LOGIC (Moved here for local file compatibility) ---
+        window.joinChat = () => {
+            const input = document.getElementById('usernameInput');
+            const name = input.value.trim();
+            if(name) {
+                globalUserName = name;
+                localStorage.setItem('nye2026_username', name);
+                
+                // UI Transition
+                const authStep = document.getElementById('authStep');
+                const chatInterface = document.getElementById('chatInterface');
+                
+                authStep.style.opacity = '0';
+                setTimeout(() => {
+                    authStep.classList.add('hidden');
+                    chatInterface.classList.remove('hidden');
+                    chatInterface.classList.add('flex');
+                    chatInterface.style.opacity = '0';
+                    setTimeout(() => {
+                        chatInterface.style.opacity = '1';
+                    }, 50);
+                }, 300);
+            }
+        };
+
         // --- Visual Effects & Logic ---
         function updateCountdown() {
             const now = new Date();
@@ -384,6 +414,19 @@
         
         // Initial Call
         document.addEventListener('DOMContentLoaded', updateCountdown);
+        
+        // Check for existing login on load for UI
+        document.addEventListener('DOMContentLoaded', () => {
+             if(globalUserName) {
+                const authStep = document.getElementById('authStep');
+                const chatInterface = document.getElementById('chatInterface');
+                if(authStep && chatInterface) {
+                    authStep.classList.add('hidden');
+                    chatInterface.classList.remove('hidden');
+                    chatInterface.classList.add('flex');
+                }
+             }
+        });
 
         function toggleMusic() {
             const audio = document.getElementById('bgMusic');
@@ -499,6 +542,7 @@
             db = getFirestore(app);
             
             let currentUser = null;
+            // Removed redundant variable definition to use global one from main script or localStorage
             let userName = localStorage.getItem('nye2026_username') || '';
 
             // --- Auth Logic ---
@@ -518,11 +562,7 @@
                 currentUser = user;
                 if (user) {
                     setupRealtimeListener();
-                    if(userName) {
-                        document.getElementById('authStep').classList.add('hidden');
-                        document.getElementById('chatInterface').classList.remove('hidden');
-                        document.getElementById('chatInterface').classList.add('flex');
-                    }
+                    // UI handling moved to main script for robustness
                 }
             });
 
@@ -558,6 +598,9 @@
                 e.preventDefault();
                 if (!currentUser) return;
                 
+                // Refresh username from storage just in case
+                userName = localStorage.getItem('nye2026_username') || '';
+                
                 const input = document.getElementById('messageInput');
                 const text = input.value.trim();
                 if (!text) return;
@@ -574,31 +617,14 @@
                     console.error("Error sending:", err);
                 }
             };
-
-            window.joinChat = () => {
-                const input = document.getElementById('usernameInput');
-                const name = input.value.trim();
-                if(name) {
-                    userName = name;
-                    localStorage.setItem('nye2026_username', name);
-                    
-                    const authStep = document.getElementById('authStep');
-                    const chatInterface = document.getElementById('chatInterface');
-                    
-                    authStep.style.opacity = '0';
-                    setTimeout(() => {
-                        authStep.classList.add('hidden');
-                        chatInterface.classList.remove('hidden');
-                        chatInterface.classList.add('flex');
-                        chatInterface.style.opacity = '0';
-                        setTimeout(() => {
-                            chatInterface.style.opacity = '1';
-                        }, 50);
-                    }, 300);
-                }
-            };
+            
+            // REMOVED joinChat from here. It is now handled in the standard script block
+            // so the button works even if this module block fails to load locally.
 
             function renderMessage(data) {
+                // Refresh username for comparison
+                userName = localStorage.getItem('nye2026_username') || '';
+                
                 const container = document.getElementById('messagesContainer');
                 const isMe = data.user === userName;
                 const div = document.createElement('div');
