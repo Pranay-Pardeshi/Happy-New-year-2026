@@ -309,180 +309,10 @@
         </main>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Configuration ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
-        
-        // --- Initialization ---
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        let currentUser = null;
-        let userName = localStorage.getItem('nye2026_username') || '';
-
-        // --- Auth Logic ---
-        async function initAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth failed:", error);
-            }
-        }
-
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                setupRealtimeListener();
-                if(userName) {
-                    document.getElementById('authStep').classList.add('hidden');
-                    document.getElementById('chatInterface').classList.remove('hidden');
-                    document.getElementById('chatInterface').classList.add('flex');
-                }
-            }
-        });
-
-        initAuth();
-
-        // --- Firestore Logic ---
-        function setupRealtimeListener() {
-            if (!currentUser) return;
-            
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'nye2026_wishes'),
-                orderBy('timestamp', 'asc')
-            );
-
-            onSnapshot(q, (snapshot) => {
-                const container = document.getElementById('messagesContainer');
-                container.innerHTML = ''; 
-                
-                if (snapshot.empty) {
-                     container.innerHTML = '<div class="text-center text-xs text-gray-500 py-4 italic">Be the first to wish!</div>';
-                     return;
-                }
-
-                snapshot.forEach((doc) => {
-                    renderMessage(doc.data());
-                });
-                container.scrollTop = container.scrollHeight;
-            }, (error) => console.error("Error fetching wishes:", error));
-        }
-
-        window.sendMessage = async (e) => {
-            e.preventDefault();
-            if (!currentUser) return;
-            
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if (!text) return;
-
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'nye2026_wishes'), {
-                    text: text,
-                    user: userName,
-                    uid: currentUser.uid,
-                    timestamp: serverTimestamp()
-                });
-                input.value = '';
-            } catch (err) {
-                console.error("Error sending:", err);
-            }
-        };
-
-        window.joinChat = () => {
-            const input = document.getElementById('usernameInput');
-            const name = input.value.trim();
-            if(name) {
-                userName = name;
-                localStorage.setItem('nye2026_username', name);
-                
-                const authStep = document.getElementById('authStep');
-                const chatInterface = document.getElementById('chatInterface');
-                
-                authStep.style.opacity = '0';
-                setTimeout(() => {
-                    authStep.classList.add('hidden');
-                    chatInterface.classList.remove('hidden');
-                    chatInterface.classList.add('flex');
-                    chatInterface.style.opacity = '0';
-                    setTimeout(() => {
-                        chatInterface.style.opacity = '1';
-                    }, 50);
-                }, 300);
-            }
-        };
-
-        function renderMessage(data) {
-            const container = document.getElementById('messagesContainer');
-            const isMe = data.user === userName;
-            const div = document.createElement('div');
-            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} message-bubble`;
-            div.innerHTML = `
-                <div class="max-w-[85%]">
-                    <div class="text-[10px] text-gray-400 mb-1 ml-1 ${isMe ? 'text-right' : 'text-left'}">${data.user}</div>
-                    <div class="p-3 rounded-2xl text-sm leading-relaxed ${
-                        isMe 
-                        ? 'bg-[#D4AF37] text-black rounded-tr-none' 
-                        : 'bg-white/10 text-white border border-white/10 rounded-tl-none'
-                    }">
-                        ${escapeHtml(data.text)}
-                    </div>
-                </div>
-            `;
-            container.appendChild(div);
-        }
-        
-        function escapeHtml(text) {
-            if (!text) return text;
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
-        // --- Visual Effects & Logic ---
-        function updateCountdown() {
-            const now = new Date();
-            const target = new Date("January 1, 2026 00:00:00").getTime();
-            const diff = target - now.getTime();
-
-            if (diff <= 0) {
-                document.getElementById("countdown").innerText = "THE FUTURE IS NOW";
-                return;
-            }
-
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            document.getElementById("countdown").innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-        }
-        setInterval(updateCountdown, 1000);
-        updateCountdown();
-
-        window.toggleMusic = () => {
-            const audio = document.getElementById('bgMusic');
-            const icon = document.getElementById('musicIcon');
-            if (audio.paused) {
-                audio.play();
-                icon.className = "fas fa-volume-up text-xl text-[#D4AF37]";
-            } else {
-                audio.pause();
-                icon.className = "fas fa-volume-mute text-xl";
-            }
-        };
-
+    <!-- UI/UX Script - Separated for local file compatibility -->
+    <script>
         // --- GATE OPENING ANIMATION ---
-        window.openGates = () => {
+        function openGates() {
             const audio = document.getElementById('bgMusic');
             const leftDoor = document.getElementById('doorLeft');
             const rightDoor = document.getElementById('doorRight');
@@ -515,17 +345,56 @@
                     chatCard.style.transform = 'translateY(0)';
                     
                     // Intensify fireworks
-                    fireworksProbability = 0.1;
-                }, 1000); // Wait for doors to open partially
+                    if(typeof fireworksProbability !== 'undefined') {
+                        fireworksProbability = 0.1;
+                    }
+                }, 1000); 
             }, 500);
-        };
+        }
+
+        // --- Visual Effects & Logic ---
+        function updateCountdown() {
+            const now = new Date();
+            const target = new Date("January 1, 2026 00:00:00").getTime();
+            const diff = target - now.getTime();
+
+            if (diff <= 0) {
+                const el = document.getElementById("countdown");
+                if(el) el.innerText = "THE FUTURE IS NOW";
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            const el = document.getElementById("countdown");
+            if(el) el.innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+        setInterval(updateCountdown, 1000);
+        
+        // Initial Call
+        document.addEventListener('DOMContentLoaded', updateCountdown);
+
+        function toggleMusic() {
+            const audio = document.getElementById('bgMusic');
+            const icon = document.getElementById('musicIcon');
+            if (audio.paused) {
+                audio.play();
+                icon.className = "fas fa-volume-up text-xl text-[#D4AF37]";
+            } else {
+                audio.pause();
+                icon.className = "fas fa-volume-mute text-xl";
+            }
+        }
 
         // --- Fireworks Logic ---
+        let fireworksProbability = 0.02; 
         const canvas = document.getElementById('fireworksCanvas');
         const ctx = canvas.getContext('2d');
         let width, height;
         let particles = [];
-        let fireworksProbability = 0.02; 
 
         function resizeCanvas() {
             width = window.innerWidth;
@@ -586,7 +455,152 @@
             }
         }
         animateFireworks();
+    </script>
 
+    <!-- Firebase SDKs (Module - May be blocked on file://) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuration ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+        
+        // --- Initialization ---
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            let currentUser = null;
+            let userName = localStorage.getItem('nye2026_username') || '';
+
+            // --- Auth Logic ---
+            async function initAuth() {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Auth failed:", error);
+                }
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    setupRealtimeListener();
+                    if(userName) {
+                        document.getElementById('authStep').classList.add('hidden');
+                        document.getElementById('chatInterface').classList.remove('hidden');
+                        document.getElementById('chatInterface').classList.add('flex');
+                    }
+                }
+            });
+
+            initAuth();
+
+            // --- Firestore Logic ---
+            function setupRealtimeListener() {
+                if (!currentUser) return;
+                
+                const q = query(
+                    collection(db, 'artifacts', appId, 'public', 'data', 'nye2026_wishes'),
+                    orderBy('timestamp', 'asc')
+                );
+
+                onSnapshot(q, (snapshot) => {
+                    const container = document.getElementById('messagesContainer');
+                    container.innerHTML = ''; 
+                    
+                    if (snapshot.empty) {
+                        container.innerHTML = '<div class="text-center text-xs text-gray-500 py-4 italic">Be the first to wish!</div>';
+                        return;
+                    }
+
+                    snapshot.forEach((doc) => {
+                        renderMessage(doc.data());
+                    });
+                    container.scrollTop = container.scrollHeight;
+                }, (error) => console.error("Error fetching wishes:", error));
+            }
+
+            // Expose globally for HTML onclick to access
+            window.sendMessage = async (e) => {
+                e.preventDefault();
+                if (!currentUser) return;
+                
+                const input = document.getElementById('messageInput');
+                const text = input.value.trim();
+                if (!text) return;
+
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'nye2026_wishes'), {
+                        text: text,
+                        user: userName,
+                        uid: currentUser.uid,
+                        timestamp: serverTimestamp()
+                    });
+                    input.value = '';
+                } catch (err) {
+                    console.error("Error sending:", err);
+                }
+            };
+
+            window.joinChat = () => {
+                const input = document.getElementById('usernameInput');
+                const name = input.value.trim();
+                if(name) {
+                    userName = name;
+                    localStorage.setItem('nye2026_username', name);
+                    
+                    const authStep = document.getElementById('authStep');
+                    const chatInterface = document.getElementById('chatInterface');
+                    
+                    authStep.style.opacity = '0';
+                    setTimeout(() => {
+                        authStep.classList.add('hidden');
+                        chatInterface.classList.remove('hidden');
+                        chatInterface.classList.add('flex');
+                        chatInterface.style.opacity = '0';
+                        setTimeout(() => {
+                            chatInterface.style.opacity = '1';
+                        }, 50);
+                    }, 300);
+                }
+            };
+
+            function renderMessage(data) {
+                const container = document.getElementById('messagesContainer');
+                const isMe = data.user === userName;
+                const div = document.createElement('div');
+                div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} message-bubble`;
+                div.innerHTML = `
+                    <div class="max-w-[85%]">
+                        <div class="text-[10px] text-gray-400 mb-1 ml-1 ${isMe ? 'text-right' : 'text-left'}">${data.user}</div>
+                        <div class="p-3 rounded-2xl text-sm leading-relaxed ${
+                            isMe 
+                            ? 'bg-[#D4AF37] text-black rounded-tr-none' 
+                            : 'bg-white/10 text-white border border-white/10 rounded-tl-none'
+                        }">
+                            ${escapeHtml(data.text)}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            }
+            
+            function escapeHtml(text) {
+                if (!text) return text;
+                return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            }
+        } catch(e) {
+            console.log("Firebase module failed to load (expected on file:// protocol). UI will still work.");
+        }
     </script>
 </body>
 </html>
