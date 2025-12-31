@@ -197,11 +197,16 @@
     <div class="bg-animate"></div>
     <canvas id="fireworksCanvas"></canvas>
 
-    <audio id="bgMusic" loop>
-        <!-- Replaced with a Golden Waltz style track. Replace the src below with a direct link to Golden Brown if you have it -->
-        <source src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Strauss_-_The_Blue_Danube.ogg" type="audio/ogg">
-        <!-- Backup/Placeholder for Golden Brown vibe (Harpsichord style) -->
-    </audio>
+    <!-- 
+        YOUTUBE BACKGROUND AUDIO SETUP
+        1.  The "videoId" below is set to The Stranglers - Golden Brown (d7R7q1lSZfs).
+        2.  You can change 'd7R7q1lSZfs' in the script below to any other YouTube Video ID.
+        3.  The video is hidden and acts as a background soundtrack.
+    -->
+    <div id="youtube-player" class="hidden absolute top-0 left-0"></div>
+
+    <!-- Load YouTube API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <!-- DOOR / GATE ANIMATION CONTAINER -->
     <div id="doorContainer" class="door-container">
@@ -323,10 +328,54 @@
     <script>
         // Global variable to hold user name if firebase fails
         let globalUserName = localStorage.getItem('nye2026_username') || '';
+        
+        // --- YOUTUBE PLAYER SETUP ---
+        var player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                videoId: 'W2o_HupXq1g', // Golden Brown - The Stranglers (Change this ID to swap songs)
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 0,
+                    'loop': 1,
+                    'playlist': 'd7R7q1lSZfs' // Required for loop to work on single video
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            // Player is ready. Waiting for user interaction (click) to start.
+        }
+
+        function toggleMusic() {
+            const icon = document.getElementById('musicIcon');
+            if (!player) return;
+            
+            // 1 = Playing, 2 = Paused
+            const state = player.getPlayerState();
+            
+            if (state === 1) { // If playing
+                player.pauseVideo();
+                icon.className = "fas fa-volume-mute text-xl";
+            } else {
+                player.playVideo();
+                icon.className = "fas fa-volume-up text-xl text-[#D4AF37]";
+            }
+        }
 
         // --- GATE OPENING ANIMATION ---
         function openGates() {
-            const audio = document.getElementById('bgMusic');
+            // Start YouTube Video
+            if (player && player.playVideo) {
+                player.setVolume(50);
+                player.playVideo();
+            }
+
             const leftDoor = document.getElementById('doorLeft');
             const rightDoor = document.getElementById('doorRight');
             const content = document.getElementById('introContent');
@@ -334,14 +383,10 @@
             const chatCard = document.getElementById('chatCard');
             const container = document.getElementById('doorContainer');
 
-            // 1. Start Music
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log("Audio autoplay prevented"));
-
-            // 2. Fade out text first
+            // Fade out text first
             content.classList.add('fade-out');
 
-            // 3. Open Doors after text fades
+            // Open Doors after text fades
             setTimeout(() => {
                 leftDoor.classList.add('door-open-left');
                 rightDoor.classList.add('door-open-right');
@@ -349,11 +394,11 @@
                 // Show App Background
                 app.style.opacity = '1';
 
-                // 4. Remove container pointer events after animation so we can click the app
+                // Remove container pointer events after animation so we can click the app
                 setTimeout(() => {
                     container.style.pointerEvents = 'none';
                     
-                    // 5. Animate Chat Card in
+                    // Animate Chat Card in
                     chatCard.style.opacity = '1';
                     chatCard.style.transform = 'translateY(0)';
                     
@@ -427,18 +472,6 @@
                 }
              }
         });
-
-        function toggleMusic() {
-            const audio = document.getElementById('bgMusic');
-            const icon = document.getElementById('musicIcon');
-            if (audio.paused) {
-                audio.play();
-                icon.className = "fas fa-volume-up text-xl text-[#D4AF37]";
-            } else {
-                audio.pause();
-                icon.className = "fas fa-volume-mute text-xl";
-            }
-        }
 
         // --- Scroll Feature ---
         window.scrollToChat = () => {
