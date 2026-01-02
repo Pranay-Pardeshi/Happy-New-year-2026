@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Elevate - Liquid Tracker</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #f1f5f9; overflow-x: hidden; }
+        
+        /* Animations */
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+        
+        /* Utility Classes for Liquid UI */
+        .liquid-card {
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 
+                0 4px 30px rgba(0, 0, 0, 0.1),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            transition: all 0.5s ease;
+        }
+
+        .liquid-checkbox {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        
+        .liquid-checkbox.checked {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 95, 70, 0.3));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            box-shadow: 0 0 20px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+
+        .text-shadow-sm {
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body class="selection:bg-pink-500/30 min-h-screen">
+
+    <!-- LIQUID BACKGROUND -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-purple-600/20 blur-[80px] md:blur-[120px] animate-[pulse_10s_infinite]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-600/20 blur-[80px] md:blur-[120px] animate-[pulse_12s_infinite]"></div>
+        <div class="absolute top-[40%] left-[40%] w-[30vw] h-[30vw] rounded-full bg-pink-600/10 blur-[60px] md:blur-[100px] animate-[pulse_15s_infinite]"></div>
+        <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] md:bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]"></div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16">
+        
+        <!-- Offline Warning Banner -->
+        <div id="config-warning" class="hidden max-w-lg mx-auto mb-8 bg-amber-500/10 border border-amber-500/20 text-amber-200 px-4 py-3 rounded-xl text-center text-sm backdrop-blur-md">
+            <i data-lucide="alert-triangle" class="inline w-4 h-4 mr-2 mb-0.5"></i>
+            <strong>Offline Mode:</strong> Cloud save inactive. Add Firebase keys in code to enable.
+        </div>
+
+        <!-- HEADER -->
+        <header class="mb-8 md:mb-12 text-center">
+            <div class="inline-flex items-center justify-center p-2 md:p-3 mb-4 md:mb-6 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-xl">
+                <i data-lucide="droplets" class="text-blue-300 mr-2 w-5 h-5 md:w-6 md:h-6"></i>
+                <span class="text-xs md:text-sm font-bold tracking-widest uppercase text-blue-100">Liquid Tracker</span>
+            </div>
+            <h1 class="text-4xl sm:text-6xl md:text-8xl font-black tracking-tight mb-4 md:mb-6 text-white drop-shadow-2xl">
+                JEE Elevate
+            </h1>
+            <p class="text-sm md:text-lg text-slate-400 max-w-xl mx-auto font-light leading-relaxed opacity-80 mb-8">
+                Flow through your syllabus.
+            </p>
+
+            <!-- Level Switcher -->
+            <div class="flex justify-center mb-8">
+                <div class="bg-black/20 backdrop-blur-xl border border-white/10 p-1 rounded-2xl flex gap-1 relative overflow-hidden shadow-2xl w-[280px] md:w-[320px]">
+                    <div id="level-indicator" class="absolute h-[calc(100%-8px)] top-1 bg-white/10 rounded-xl transition-all duration-300 ease-out shadow-[0_0_20px_rgba(255,255,255,0.05)] w-[calc(50%-4px)] left-1"></div>
+                    <button onclick="switchLevel('Class11')" class="level-btn relative z-10 w-1/2 py-3 rounded-xl text-sm md:text-base font-bold transition-all duration-300 text-white text-shadow-sm" id="btn-class11">
+                        Class 11
+                    </button>
+                    <button onclick="switchLevel('Class12')" class="level-btn relative z-10 w-1/2 py-3 rounded-xl text-sm md:text-base font-bold transition-all duration-300 text-slate-400 hover:text-white" id="btn-class12">
+                        Class 12
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD STATS -->
+        <div id="dashboard" class="mb-12 md:mb-16 text-center relative z-10 px-4">
+            <!-- Injected by JS -->
+        </div>
+
+        <!-- SYLLABUS LIST -->
+        <div id="syllabus-container" class="space-y-8 md:space-y-12">
+            <!-- Injected by JS -->
+        </div>
+
+        <footer class="mt-20 md:mt-32 text-center text-slate-600 text-xs md:text-sm pb-10 font-medium">
+            <p class="opacity-50">Designed with Focus • Audio Enabled</p>
+        </footer>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // --- Configuration ---
+        // NOTE: If you are running this file LOCALLY, you MUST replace the fallback config below with your own.
+        let firebaseConfig;
+        let appId;
+        let isConfigured = false;
+        
+        try {
+            // Check for environment variables injected by the AI Preview
+            if (typeof window.__firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(window.__firebase_config);
+                appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
+                isConfigured = true;
+            } else {
+                throw new Error("No env config");
+            }
+        } catch (e) {
+            // FALLBACK FOR LOCAL/DOWNLOADED USE
+            // Config provided by user for local use
+            firebaseConfig = { 
+                apiKey: "AIzaSyANzrs3xsHEP8hcWosnXzlPtWhqkkMkeis", 
+                authDomain: "jee-tracker-af341.firebaseapp.com", 
+                projectId: "jee-tracker-af341",
+                storageBucket: "jee-tracker-af341.firebasestorage.app",
+                messagingSenderId: "731027416234",
+                appId: "1:731027416234:web:5940d3157ea8705c251cd3",
+                measurementId: "G-HJYSQGBDMQ"
+            };
+            appId = "jee-elevate";
+            isConfigured = true;
+        }
+
+        // Show warning if offline
+        if (!isConfigured && firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+             document.getElementById('config-warning').classList.remove('hidden');
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Syllabus Data ---
+        const SYLLABUS = {
+            Class11: {
+                Physics: ["Units and Measurements", "Motion in a Straight Line", "Motion in a Plane", "Laws of Motion", "Work, Energy, and Power", "System of Particles and Rotational Motion", "Gravitation", "Mechanical Properties of Solids", "Mechanical Properties of Fluids", "Thermal Properties of Matter", "Thermodynamics", "Kinetic Theory of Gases", "Oscillations", "Waves"],
+                Chemistry: ["Some Basic Concepts of Chemistry", "Structure of Atom", "Classification of Elements & Periodicity", "Chemical Bonding & Molecular Structure", "Thermodynamics", "Equilibrium", "Redox Reactions", "Hydrogen", "The s-Block Elements", "The p-Block Elements (Group 13 & 14)", "Organic Chemistry: Basic Principles (GOC)", "Hydrocarbons", "Environmental Chemistry"],
+                Maths: ["Sets", "Relations and Functions", "Trigonometric Functions", "Complex Numbers and Quadratic Equations", "Linear Inequalities", "Permutations and Combinations", "Binomial Theorem", "Sequences and Series", "Straight Lines", "Conic Sections", "Intro to Three Dimensional Geometry", "Limits and Derivatives", "Mathematical Reasoning", "Statistics", "Probability"]
+            },
+            Class12: {
+                Physics: ["Electric Charges and Fields", "Electrostatic Potential and Capacitance", "Current Electricity", "Moving Charges and Magnetism", "Magnetism and Matter", "Electromagnetic Induction", "Alternating Current", "Electromagnetic Waves", "Ray Optics and Optical Instruments", "Wave Optics", "Dual Nature of Radiation and Matter", "Atoms", "Nuclei", "Semiconductor Electronics"],
+                Chemistry: ["Solutions", "Electrochemistry", "Chemical Kinetics", "The d- and f- Block Elements", "Coordination Compounds", "Haloalkanes and Haloarenes", "Alcohols, Phenols and Ethers", "Aldehydes, Ketones and Carboxylic Acids", "Amines", "Biomolecules"],
+                Maths: ["Relations and Functions", "Inverse Trigonometric Functions", "Matrices", "Determinants", "Continuity and Differentiability", "Applications of Derivatives", "Integrals", "Application of Integrals", "Differential Equations", "Vector Algebra", "Three Dimensional Geometry", "Linear Programming", "Probability"]
+            }
+        };
+
+        const COLORS = {
+            Physics: { start: '#8b5cf6', end: '#6366f1', icon: '#a78bfa' },
+            Chemistry: { start: '#06b6d4', end: '#14b8a6', icon: '#67e8f9' },
+            Maths: { start: '#ec4899', end: '#f43f5e', icon: '#fbcfe8' }
+        };
+
+        const ICONS = {
+            Physics: 'atom',
+            Chemistry: 'book-open',
+            Maths: 'calculator'
+        };
+
+        // --- State ---
+        let state = {
+            data: {},
+            user: null,
+            currentLevel: 'Class11',
+            expandedSubjects: { Physics: true, Chemistry: true, Maths: true }
+        };
+
+        // --- Audio Logic (Thock Sound) ---
+        function playThockSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const t = ctx.currentTime;
+                
+                // Body
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, t);
+                osc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+                gain.gain.setValueAtTime(0.6, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.1);
+
+                // Keycap Click
+                const bufferSize = ctx.sampleRate * 0.04;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                const noiseGain = ctx.createGain();
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 800;
+                noiseGain.gain.setValueAtTime(0.3, t);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(ctx.destination);
+                noise.start(t);
+            } catch (e) { console.error("Audio error", e); }
+        }
+
+        // --- Render Logic ---
+
+        function renderDashboard() {
+            const container = document.getElementById('dashboard');
+            let total = 0;
+            let completed = 0;
+            const activeSyllabus = SYLLABUS[state.currentLevel];
+
+            Object.keys(activeSyllabus).forEach(subject => {
+                activeSyllabus[subject].forEach(chapter => {
+                    ['DPP', 'Module', 'H.W'].forEach(type => {
+                        total++;
+                        if (state.data[`${subject}-${chapter}-${type}`]) completed++;
+                    });
+                });
+            });
+
+            const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+            container.innerHTML = `
+                <div class="inline-flex flex-col items-center justify-center p-6 md:p-8 mb-6 md:mb-8 rounded-[2rem] md:rounded-[2.5rem] relative group hover:scale-[1.02] transition-transform duration-500 w-full max-w-sm mx-auto liquid-card">
+                    <div class="absolute inset-0 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+                    <div class="flex items-center mb-2">
+                        <i data-lucide="trophy" class="mr-2 md:mr-3 ${percentage === 100 ? 'text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]' : 'text-slate-400'}" style="width: 24px; height: 24px;"></i>
+                        <span class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/50 drop-shadow-lg tracking-tight">
+                            ${percentage}%
+                        </span>
+                    </div>
+                    <span class="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">
+                        ${state.currentLevel === 'Class11' ? 'Class 11' : 'Class 12'} Progress
+                    </span>
+                </div>
+                
+                <div class="max-w-2xl mx-auto flex flex-col items-center">
+                    <div class="w-full relative h-3 md:h-4 bg-black/30 rounded-full overflow-hidden backdrop-blur-md shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] border border-white/5">
+                        <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-1000 ease-out" style="width: ${percentage}%; box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);"></div>
+                        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center justify-between w-full mt-4 px-2 gap-4">
+                        <p class="text-slate-400 font-medium text-xs md:text-sm">
+                            <span class="text-white font-bold">${completed}</span> / <span class="text-slate-300">${total}</span> Milestones
+                        </p>
+                        <button onclick="resetLevel()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider border border-red-500/20 transition-all duration-300 active:scale-95">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            Reset Level
+                        </button>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderSyllabus() {
+            const container = document.getElementById('syllabus-container');
+            container.innerHTML = '';
+            
+            const activeSyllabus = SYLLABUS[state.currentLevel];
+
+            Object.keys(activeSyllabus).forEach(subject => {
+                const chapters = activeSyllabus[subject];
+                const color = COLORS[subject];
+                
+                // Subject Progress
+                let subTotal = chapters.length * 3;
+                let subCompleted = 0;
+                chapters.forEach(ch => {
+                    ['DPP', 'Module', 'H.W'].forEach(type => {
+                        if (state.data[`${subject}-${ch}-${type}`]) subCompleted++;
+                    });
+                });
+                const subPercent = Math.round((subCompleted / subTotal) * 100);
+
+                const section = document.createElement('div');
+                section.className = "liquid-card mb-6 md:mb-8 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden";
+                
+                const isOpen = state.expandedSubjects[subject];
+
+                // Header HTML
+                section.innerHTML = `
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-70"></div>
+                    
+                    <div onclick="toggleSubject('${subject}')" class="p-4 md:p-8 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 select-none group relative z-10">
+                        <div class="flex items-center gap-4 md:gap-6">
+                            <div class="relative p-3 md:p-4 rounded-xl md:rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500 flex-shrink-0" 
+                                 style="background: linear-gradient(135deg, ${color.start}20, ${color.end}40); border: 1px solid ${color.start}40; box-shadow: 0 0 20px ${color.start}20;">
+                                <i data-lucide="${ICONS[subject]}" class="text-white relative z-10 md:w-7 md:h-7" style="color: ${color.icon}"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight drop-shadow-sm">${subject}</h2>
+                                <p class="text-slate-300 font-medium text-xs md:text-sm mt-1 opacity-80">${subCompleted} / ${subTotal} Tasks Completed</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-4 md:gap-8 w-full md:w-auto">
+                            <div class="flex-1 md:w-64">
+                                <div class="flex justify-between text-[10px] md:text-xs font-bold text-slate-300 mb-1 uppercase tracking-wider opacity-80">
+                                    <span>Progress</span>
+                                    <span>${subPercent}%</span>
+                                </div>
+                                <div class="h-3 md:h-4 w-full bg-black/20 rounded-full overflow-hidden mt-2 md:mt-3 p-[2px] shadow-inner backdrop-blur-sm border border-white/5">
+                                    <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden" 
+                                         style="width: ${subPercent}%; background: linear-gradient(90deg, ${color.start}, ${color.end}); box-shadow: 0 0 10px rgba(255,255,255,0.2);">
+                                        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white transition-all duration-300 flex-shrink-0 ${isOpen ? 'rotate-180 bg-white/10' : 'hover:bg-white/10'}">
+                                <i data-lucide="chevron-down" class="md:w-5 md:h-5"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isOpen ? 'max-h-[8000px] opacity-100' : 'max-h-0 opacity-0'}">
+                        <div class="p-4 md:p-8 pt-0 grid gap-3 md:gap-4">
+                            ${chapters.map((chapter, idx) => {
+                                const isComplete = ['DPP','Module','H.W'].every(t => state.data[`${subject}-${chapter}-${t}`]);
+                                return `
+                                    <div class="relative rounded-xl md:rounded-2xl transition-all duration-500 p-4 md:p-6 backdrop-blur-md ${isComplete ? 'border border-emerald-500/30 bg-emerald-500/5' : 'border border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'}">
+                                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 mb-4 md:mb-0">
+                                            <h3 class="font-semibold text-base md:text-lg tracking-wide transition-colors duration-300 flex items-center ${isComplete ? 'text-emerald-300' : 'text-slate-200'}">
+                                                <span class="opacity-30 mr-2 md:mr-3 text-xs md:text-sm font-mono flex-shrink-0">${String(idx + 1).padStart(2, '0')}</span>
+                                                <span class="break-words">${chapter}</span>
+                                            </h3>
+                                            ${isComplete ? `
+                                                <span class="inline-flex items-center gap-2 text-[10px] md:text-xs font-bold text-emerald-300 bg-emerald-500/10 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.2)] whitespace-nowrap">
+                                                    <i data-lucide="sparkles" class="w-3 h-3 text-emerald-200"></i> COMPLETE
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 mt-3 md:mt-4">
+                                            ${['DPP', 'Module', 'H.W'].map(type => {
+                                                const checked = !!state.data[`${subject}-${chapter}-${type}`];
+                                                return `
+                                                    <button onclick="toggleItem('${subject}', '${chapter}', '${type}')" 
+                                                        class="liquid-checkbox group relative flex items-center justify-center w-full py-3 md:py-4 px-3 md:px-4 rounded-xl md:rounded-2xl transition-all duration-200 ease-out overflow-hidden active:scale-95 active:bg-white/10 ${checked ? 'checked' : 'hover:bg-white/5'}">
+                                                        <div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                                                        <div class="relative z-10 flex items-center gap-2 md:gap-3 transition-transform duration-200 ${checked ? 'scale-105' : 'scale-100 group-hover:scale-102'}">
+                                                            <div class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-300 ${checked ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-[0_2px_10px_rgba(16,185,129,0.5)]' : 'bg-white/5 border border-white/10 group-hover:border-white/30'}">
+                                                                <i data-lucide="check" class="text-white w-3 h-3 md:w-4 md:h-4 transition-all duration-300 ${checked ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}" stroke-width="3"></i>
+                                                            </div>
+                                                            <span class="text-xs md:text-sm font-medium tracking-wide transition-colors truncate ${checked ? 'text-emerald-100 text-shadow-sm' : 'text-slate-300 group-hover:text-white'}">
+                                                                ${type}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(section);
+            });
+            lucide.createIcons();
+        }
+
+        // --- Global Functions (Exposed to Window) ---
+
+        window.toggleItem = async (subject, chapter, type) => {
+            playThockSound();
+            const key = `${subject}-${chapter}-${type}`;
+            const newData = { ...state.data, [key]: !state.data[key] };
+            
+            // Optimistic UI Update
+            state.data = newData;
+            renderSyllabus(); // Re-render to show checkmark/progress
+            renderDashboard();
+
+            // Cloud Save
+            if (state.user) {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'users', state.user.uid, 'tracker', 'progress');
+                    await setDoc(docRef, { items: newData }, { merge: true });
+                } catch (e) { console.error("Save failed", e); }
+            }
+        };
+
+        window.switchLevel = (level) => {
+            if (level === state.currentLevel) return;
+            playThockSound();
+            state.currentLevel = level;
+            
+            // Update UI Switcher
+            const indicator = document.getElementById('level-indicator');
+            const btn11 = document.getElementById('btn-class11');
+            const btn12 = document.getElementById('btn-class12');
+            
+            if (level === 'Class11') {
+                indicator.style.left = '4px';
+                btn11.classList.add('text-white', 'text-shadow-sm');
+                btn11.classList.remove('text-slate-400');
+                btn12.classList.add('text-slate-400');
+                btn12.classList.remove('text-white', 'text-shadow-sm');
+            } else {
+                indicator.style.left = '50%';
+                btn12.classList.add('text-white', 'text-shadow-sm');
+                btn12.classList.remove('text-slate-400');
+                btn11.classList.add('text-slate-400');
+                btn11.classList.remove('text-white', 'text-shadow-sm');
+            }
+            
+            renderDashboard();
+            renderSyllabus();
+        };
+
+        window.toggleSubject = (subject) => {
+            playThockSound();
+            state.expandedSubjects[subject] = !state.expandedSubjects[subject];
+            renderSyllabus();
+        };
+
+        window.resetLevel = async () => {
+            if (confirm(`Are you sure you want to reset your ${state.currentLevel === 'Class11' ? 'Class 11' : 'Class 12'} progress?`)) {
+                const currentSyllabus = SYLLABUS[state.currentLevel];
+                const itemsToRemove = [];
+                
+                Object.keys(currentSyllabus).forEach(subject => {
+                    currentSyllabus[subject].forEach(chapter => {
+                        ['DPP', 'Module', 'H.W'].forEach(type => {
+                            itemsToRemove.push(`${subject}-${chapter}-${type}`);
+                        });
+                    });
+                });
+
+                const newData = { ...state.data };
+                itemsToRemove.forEach(key => delete newData[key]);
+                
+                state.data = newData;
+                renderDashboard();
+                renderSyllabus();
+                
+                if (state.user) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'users', state.user.uid, 'tracker', 'progress');
+                        await setDoc(docRef, { items: newData });
+                    } catch (e) { console.error("Reset failed", e); }
+                }
+            }
+        };
+
+        // --- Init ---
+        
+        async function initAuth() {
+            if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                await signInWithCustomToken(auth, window.__initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        }
+
+        initAuth();
+
+        onAuthStateChanged(auth, (u) => {
+            if (u) {
+                state.user = u;
+                // Sync Listener
+                const docRef = doc(db, 'artifacts', appId, 'users', u.uid, 'tracker', 'progress');
+                onSnapshot(docRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        state.data = snapshot.data().items || {};
+                        renderDashboard();
+                        renderSyllabus();
+                    }
+                });
+            }
+        });
+
+        // Initial Render
+        renderDashboard();
+        renderSyllabus();
+
+    </script>
+</body>
+</html>
